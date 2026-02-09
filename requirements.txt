@@ -1,0 +1,6 @@
+
+langchain-cohere
+langchain-openai
+pydantic-settings
+pyodbc
+langchain-qdrant

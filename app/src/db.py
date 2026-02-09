@@ -1,0 +1,44 @@
+import pyodbc
+from .config import settings
+
+class SQLDB:
+    def __init__(self):
+        self.server = settings.DB_SERVER
+        self.database = settings.DB_NAME
+        self.username = settings.DB_USER
+        self.password = settings.DB_PASSWORD
+        self.driver = settings.DB_DRIVER
+    
+    def _get_db_connection(self):
+        """
+        Establishes a connection to the MSSQL Server using environment variables.
+        """
+        server = self.server
+        database = self.database
+        username = self.username
+        password = self.password
+        driver = self.driver
+
+        conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+    
+        try:
+            conn = pyodbc.connect(conn_str)
+            return conn
+        except Exception as e:
+            print(f"Error connecting to database: {e}")
+            return None
+
+
+    def query_db(self, query):
+        """
+        Executes a query on the MSSQL Server.
+        """
+        conn = self._get_db_connection()
+        if conn is None:
+            return None
+        cursor = conn.cursor()
+        cursor.execute(query)
+        columns = [column[0] for column in cursor.description]
+        rows = cursor.fetchall()
+        return {"columns": columns, "rows": rows}
+        
