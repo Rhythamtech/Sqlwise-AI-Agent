@@ -1,3 +1,4 @@
+import os
 import logging
 import json
 import uuid
@@ -12,7 +13,7 @@ class RAGPipeline:
         self.embedder = CohereEmbeddings(model="embed-v4.0")
         self.qdrant_url = settings.QDRANT_URL
 
-    def create_chunks_index(self, chunks: list[dict]):
+    def create_chunks_index(self, chunks: list[dict], collection_name: str):
         logging.info("Creating chunks index.")
         chunk_docs = []        
             
@@ -35,24 +36,31 @@ class RAGPipeline:
         QdrantVectorStore.from_documents(
             documents=chunk_docs,
             embedding=self.embedder,
-            collection_name="Ecom Context RAG",
+            collection_name=collection_name,
             url=self.qdrant_url
         )
         logging.info("Ecom Context vector store created successfully.")
 
-    def query_qna_index(self, user_query):
+    def query_qna_index(self, user_query, collection_name: str):
         logging.info(f"Querying QnA index with: {user_query}")
         vector_store = QdrantVectorStore.from_existing_collection(
             embedding=self.embedder,
-            collection_name="Ecom Context RAG",
+            collection_name=collection_name,
             url=self.qdrant_url
         )
         results = vector_store.similarity_search(query=user_query, k=3)
         return results
 
 
-        
 # if __name__ == "__main__":
 #     rag = RAGPipeline()
-#     chunks = business_logic_chunks + business_insight_questions + business_logic_chunks_with_sql + schema_chunks
-#     rag.create_chunks_index(chunks)
+
+#     folder = "app/json_chunks"
+
+#     files_path = [os.path.join(folder, file) for file in os.listdir(folder) if file.endswith(".json")]
+
+#     for file_path in files_path:
+#         with open(file_path, "r") as f:
+#             collection_name = file_path.split("/")[-1].split(".")[0]
+#             print( "Collection Name: ", collection_name)
+#             rag.create_chunks_index(json.load(f), collection_name)

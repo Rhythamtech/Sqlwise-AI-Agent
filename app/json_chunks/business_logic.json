@@ -1,0 +1,184 @@
+[
+  {
+    "id": "logic:financial:revenue_model",
+    "text": "The business calculates Net Revenue as the sum of item-level selling prices (price_usd) minus the sum of processed refunds (refund_amount_usd). Gross Revenue is the sum of price_usd before any refunds. Calculations must always be performed at the 'order_items' level, not the 'orders' header level, to ensure granularity and accuracy with partial refunds.",
+    "metadata": {
+      "topic": "finance",
+      "subtopic": "revenue"
+    }
+  },
+  {
+    "id": "logic:financial:profitability",
+    "text": "Profitability (Gross Profit) is defined as Net Revenue minus Cost of Goods Sold (COGS). COGS is calculated by summing 'cogs_usd' from the order_items table. Crucially, refunds do NOT reduce COGS, as the physical good is assumed lost or cost incurred upon shipment. Therefore, Profit = (Gross Sales - Refunds) - COGS.",
+    "metadata": {
+      "topic": "finance",
+      "subtopic": "profit"
+    }
+  },
+  {
+    "id": "logic:financial:currency",
+    "text": "The base currency for all transactions is USD. All INR values (price_inr, cogs_inr) are derived fields calculated using a fixed or ingested exchange rate. Analytical queries should default to USD fields unless the stakeholder explicitly requests localized INR reporting.",
+    "metadata": {
+      "topic": "finance",
+      "subtopic": "currency"
+    }
+  },
+  {
+    "id": "logic:traffic:attribution",
+    "text": "Marketing attribution uses a Last-Touch model based on the session tracking parameters. Attribution fields (utm_source, utm_campaign) are stored in the 'sessions' table. To attribute revenue to a source, one must join 'sessions' to 'orders' to 'order_items'. Direct traffic is identified by null UTM parameters and null referrers.",
+    "metadata": {
+      "topic": "traffic",
+      "subtopic": "attribution"
+    }
+  },
+  {
+    "id": "logic:traffic:conversion",
+    "text": "Session Conversion Rate is the primary efficiency metric, defined as the count of distinct orders divided by the count of distinct sessions. It tracks the percentage of site visits that result in a transaction. This can be segmented by device_type or marketing source.",
+    "metadata": {
+      "topic": "traffic",
+      "subtopic": "metrics"
+    }
+  },
+  {
+    "id": "logic:customer:definitions",
+    "text": "Customer tracking logic defines an 'Active User' as one who has placed an order within the last 30 days. A 'Repeat Customer' is defined as a user_id associated with 2 or more distinct order_ids over their lifetime. User identity is consistent across sessions via the user_id field.",
+    "metadata": {
+      "topic": "customer",
+      "subtopic": "segmentation"
+    }
+  },
+  {
+    "id": "logic:product:performance",
+    "text": "Product performance is measured at the order_item level. Products are categorized as 'Primary' (is_primary_item=1) or 'Add-on' (is_primary_item=0). Revenue analysis should often split by this flag to distinguish core drivers from upsells. 'Best Sellers' are determined by quantity sold or total revenue generated.",
+    "metadata": {
+      "topic": "product",
+      "subtopic": "merchandising"
+    }
+  },
+  {
+    "id": "logic:data:canonical_join",
+    "text": "The canonical join path for all sales analytics is: Sessions (session_id) -> Orders (order_id) -> Order_Items (order_item_id) -> Refunds. This path ensures that every dollar of revenue is linked back to the session (marketing source) and the user. Never join distinct paths (e.g., Session->Pageview) for revenue data to avoid fan-out duplication.",
+    "metadata": {
+      "topic": "data_engineering",
+      "subtopic": "joins"
+    }
+  },
+  {
+    "id": "logic:metrics:aov",
+    "text": "Average Order Value (AOV) is the average Net Revenue generated per valid order. It is calculated as Total Net Revenue divided by the Count of Unique Orders. This metric helps assess pricing strategy and bundle performance.",
+    "metadata": {
+      "topic": "finance",
+      "subtopic": "metrics"
+    }
+  },
+  {
+    "id": "logic:metrics:refund_rate",
+    "text": "Refund Rate is a quality control metric calculated as Total Refund Amount (USD) divided by Gross Revenue (USD). It indicates customer dissatisfaction or product issues. High refund rates should trigger analysis of the 'worst products' via the refund/order_items join.",
+    "metadata": {
+      "topic": "quality",
+      "subtopic": "metrics"
+    }
+  },
+  {
+    "id": "logic:constraints:session_order_cardinality",
+    "text": "A session can have zero or one orders in the standard business logic, with multiple orders per session treated as rare edge cases. Conversion rate must be computed as COUNT(DISTINCT orders.order_id) divided by COUNT(DISTINCT sessions.session_id) to avoid inflation from multiple orders in a single session.",
+    "metadata": {
+      "topic": "cardinality",
+      "entities": [
+        "sessions",
+        "orders"
+      ],
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:order_primary_item",
+    "text": "Each order must have exactly one primary order item where is_primary_item = 1, and zero or more add-on items where is_primary_item = 0. The orders.primary_product_id field is a denormalized reference to this primary item and must not be used as the source of truth for revenue calculations.",
+    "metadata": {
+      "topic": "cardinality",
+      "entities": [
+        "orders",
+        "order_items"
+      ],
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:canonical_revenue_source",
+    "text": "All revenue and COGS metrics must be calculated from the order_items table using price_usd and cogs_usd as canonical fields. Orders-level price and cogs fields are summarized and may not reflect partial refunds or item-level adjustments.",
+    "metadata": {
+      "topic": "finance",
+      "subtopic": "canonical_source",
+      "source": "vector_db_chunks"
+    }
+  },
+  {
+    "id": "logic:constraints:net_orders_definition",
+    "text": "Net Orders are defined as distinct orders whose per-order net revenue is strictly greater than zero. Fully refunded orders, where the sum of item-level price_usd minus refund_amount_usd equals zero, must be excluded from Net Orders to keep AOV and order-based metrics meaningful.",
+    "metadata": {
+      "topic": "metrics",
+      "metric": "net_orders",
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:time_filtering",
+    "text": "All created_at timestamps are stored in UTC and must be interpreted as such in time-based analyses. The phrase 'last N days' is implemented as created_at >= CURRENT_DATE - INTERVAL N days, inclusive of the boundary date, and daily aggregations should use DATE(created_at) to avoid time-of-day issues.",
+    "metadata": {
+      "topic": "time_logic",
+      "fields": [
+        "created_at"
+      ],
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:traffic_classification",
+    "text": "Direct traffic is defined as sessions where utm_source IS NULL AND http_referer IS NULL, while organic referral traffic is defined as utm_source IS NULL AND http_referer IS NOT NULL. Any attribution or traffic-type breakdown must respect these conditions to prevent misclassifying direct versus organic sessions.",
+    "metadata": {
+      "topic": "attribution",
+      "subtopic": "traffic_type",
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:utm_nullability",
+    "text": "UTM fields such as utm_source, utm_campaign, and utm_content are nullable and may be absent for certain sessions. Attribution queries and group-bys must explicitly handle NULL values, typically using COALESCE to bucket unknown or direct traffic segments.",
+    "metadata": {
+      "topic": "data_quality",
+      "fields": [
+        "utm_source",
+        "utm_campaign",
+        "utm_content"
+      ],
+      "source": "vector_db_chunks"
+    }
+  },
+  {
+    "id": "logic:constraints:product_identity",
+    "text": "Product identity and joins must be based on product_id, which is stable over time, rather than product_name, which may change. Any historical or longitudinal product analysis must use product_id as the key to preserve consistency across name changes.",
+    "metadata": {
+      "topic": "product",
+      "subtopic": "identity",
+      "source": "vector_db_chunks"
+    }
+  },
+  {
+    "id": "logic:constraints:refund_aggregation",
+    "text": "An order item can have multiple refund records, so refund_amount_usd must always be aggregated at the order_item level before comparison to price_usd. Fully refunded items are those where the total refund_amount_usd equals price_usd; partially refunded items are those where total refund_amount_usd is greater than zero but less than price_usd.",
+    "metadata": {
+      "topic": "refunds",
+      "subtopic": "aggregation",
+      "source": "businesslogicchunks"
+    }
+  },
+  {
+    "id": "logic:constraints:joins_for_revenue",
+    "text": "The canonical join path for any revenue, COGS, or refund-based metric is sessions -> orders via session_id -> order_items via order_id -> LEFT JOIN refunds via order_item_id. Alternative join patterns, such as joining via pageviews for revenue, must be avoided to prevent fan-out duplication and overstated metrics.",
+    "metadata": {
+      "topic": "data_engineering",
+      "subtopic": "joins",
+      "source": "vector_db_chunks"
+    }
+  }
+]

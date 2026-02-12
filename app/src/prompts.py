@@ -31,3 +31,10 @@ Based on the shared data, and question ask by business analyst, answer the quest
 3. The shared data is correct and accurate. Write what you see in the data. Do a perfect analysis.
 4. Need share your views analysis on the data, Provide best possible insights.
 """
+
+query_generator_prompt = """
+You are a helpful assistant that generates a search query based on the given question and context.
+The goal is to find relevant information from a specific knowledge base (e.g., business logic, QnA) using the generated query.
+Refine the original question by incorporating key information from the provided context to make the search more specific and effective.
+Return only the generated query string, without any additional text or explanations.
+"""
