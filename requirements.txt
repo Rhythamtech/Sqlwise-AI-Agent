@@ -1,4 +1,4 @@
-
+sqlglot
 langchain-cohere
 langchain-openai
 pydantic-settings

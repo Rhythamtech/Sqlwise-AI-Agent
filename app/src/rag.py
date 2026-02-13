@@ -41,15 +41,15 @@ class RAGPipeline:
         )
         logging.info("Ecom Context vector store created successfully.")
 
-    def query_qna_index(self, user_query, collection_name: str):
+    def query_qna_index(self, user_query, collection_name: str,k=3):
         logging.info(f"Querying QnA index with: {user_query}")
         vector_store = QdrantVectorStore.from_existing_collection(
             embedding=self.embedder,
             collection_name=collection_name,
             url=self.qdrant_url
         )
-        results = vector_store.similarity_search(query=user_query, k=3)
-        return results
+        results = vector_store.similarity_search(query=user_query, k=k)
+        return [result.model_dump() for result in results]
 
 
 # if __name__ == "__main__":
@@ -62,6 +62,6 @@ class RAGPipeline:
 #     for file_path in files_path:
 #         with open(file_path, "r") as f:
 #             collection_name = file_path.split("/")[-1].split(".")[0]
-#             if collection_name == "qna":
+#             if collection_name == "db":
 #                 print( "Collection Name: ", collection_name)
 #                 rag.create_chunks_index(json.load(f), collection_name)

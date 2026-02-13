@@ -34,11 +34,19 @@ class SQLDB:
         Executes a query on the MSSQL Server.
         """
         conn = self._get_db_connection()
+        columns, rows = [], []
         if conn is None:
-            return None
-        cursor = conn.cursor()
-        cursor.execute(query)
-        columns = [column[0] for column in cursor.description]
-        rows = cursor.fetchall()
+            return {"columns": columns, "rows": rows}
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                if cursor.description:
+                    columns = [column[0] for column in cursor.description]
+                    rows = [list(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Error executing query: {e}")
+        finally:
+            conn.close()
         return {"columns": columns, "rows": rows}
         

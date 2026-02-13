@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from .config import settings
-from .prompts import sql_system_prompt, data_analyst_prompt, query_generator_prompt
+from .prompts import sql_system_prompt, data_analyst_prompt, query_generator_prompt, query_validator_prompt
 from schema import SqlResponse
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
@@ -56,3 +56,11 @@ class QueryGeneratorAgent(BaseAgent):
     
     def generate_query(self, question: str, context: str):
         return self.base_agent(question=question, data=context).content
+
+class QueryValidatorAgent(BaseAgent):
+    def __init__(self):
+        super().__init__(query_validator_prompt)
+    
+    def validate_query(self, query: str, data: str):
+        schema = SqlResponse
+        return self.base_agent(question=query, data=data, schema=schema)
