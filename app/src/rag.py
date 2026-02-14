@@ -15,8 +15,8 @@ class RAGPipeline:
 
     def create_chunks_index(self, chunks: list[dict], collection_name: str):
         logging.info("Creating chunks index.")
-        chunk_docs = []        
-            
+        chunk_docs = []
+
         try:
             for chunk in chunks:
                 metadata = chunk["metadata"]
@@ -27,7 +27,7 @@ class RAGPipeline:
                     metadata={"id": str(uuid.uuid4()), **metadata}
                 )
                 chunk_docs.append(doc)
-          
+
         except json.JSONDecodeError as e:
             logging.error(f"Failed to decode JSON: {e}")
             logging.error(f"Invalid JSON string: {response.choices[0].message.content}")
